@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>hudlab — Game Targeting & Missile Lock-On HUD Laboratory</title>
+  <link rel="stylesheet" href="./src/styles.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three.module.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <!-- TOP HEADER BAR -->
+  <header class="lab-header">
+    <div class="lab-brand">
+      <span class="lab-logo">HUDLAB</span>
+      <span class="lab-subtitle">19 HUDs · 3 Era Looks · Real-Time Faders</span>
+    </div>
+
+    <!-- 3-WAY MASTER ERA LOOK SWITCHER + SIDE-BY-SIDE COMPARE -->
+    <div class="lab-header-center">
+      <div class="era-switcher-group" role="group" aria-label="Master Era Look">
+        <span class="era-switcher-label">LOOK:</span>
+        <button class="era-btn active" data-set-era="default" title="1) Default Tactical HUD (Now)">
+          1) Default (Now)
+        </button>
+        <button class="era-btn era-80s" data-set-era="retro-80s" title="2) Old 1980s CRT Raster & Vector Oscilloscope Look">
+          2) 80's CRT
+        </button>
+        <button class="era-btn era-futuristic" data-set-era="futuristic" title="3) Futuristic Extreme Hi-Tech (Thin Lines, Particles, Soft Halos)">
+          3) Futuristic Hi-Tech
+        </button>
+      </div>
+
+      <button id="btn-toggle-compare" class="lab-btn" title="Compare two HUD specimens side-by-side on the same scenario and shared clock">
+        <span>◫ Compare</span>
+      </button>
+      <select id="compare-specimen-select" class="lab-select" disabled title="Select second specimen for comparison"></select>
+    </div>
+
+    <!-- MEMORY COPY-PASTE & FULL LOOK/STATS EXPORT BAR -->
+    <div class="lab-header-right">
+      <select id="copy-format-select" class="lab-select" title="Select format for one-click Copy Variables Only">
+        <option value="json-all">Vars: All JSON</option>
+        <option value="json-diff">Vars: Modified Diff Only</option>
+        <option value="esm">Vars: ES Module const</option>
+        <option value="css">Vars: CSS Custom Props</option>
+      </select>
+      <button id="btn-copy-vars" class="lab-btn primary" title="Copy only the tunable variables directly to system clipboard">
+        <span>📋 Copy Variables Only</span>
+      </button>
+      <button id="btn-open-paste" class="lab-btn" title="Paste variables from clipboard to restore/apply immediately">
+        <span>📥 Paste Variables</span>
+      </button>
+      <button id="btn-open-export" class="lab-btn success" title="Export entire Look & Feel, Spec Card, and Calculated HUD Stats">
+        <span>📦 Export Look &amp; Stats</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN 3-COLUMN WORKSPACE -->
+  <main class="lab-workspace">
+    <!-- 1. LEFT RAIL: CATALOGUE OF 5 FAMILIES & 19 SPECIMENS -->
+    <aside class="lab-sidebar-left">
+      <div class="sidebar-section-top">
+        <input
+          id="specimen-search"
+          type="search"
+          class="search-input"
+          placeholder="Search 19 HUD specimens (e.g. ir, saclos, aesa)..."
+        />
+        <div id="family-filter-bar" class="family-filter-bar"></div>
+      </div>
+      <div id="specimen-list" class="specimen-list"></div>
+    </aside>
+
+    <!-- 2. CENTER WORKSPACE: LIVE 3D+HUD VIEWPORT(S) + OPERATOR DECK + LIVE STATS / SPEC CARD -->
+    <section class="lab-center-stage">
+      <div id="viewport-split-container" class="viewport-split-container">
+        <div id="primary-viewport" class="hud-viewport-root"></div>
+        <div id="compare-viewport" class="hud-viewport-root hidden"></div>
+      </div>
+
+      <!-- OPERATOR ACTION DECK -->
+      <div class="operator-deck">
+        <div id="target-quick-bar" class="target-quick-bar"></div>
+        <div class="operator-actions">
+          <button id="btn-action-fire" class="lab-btn success" title="Launch missile or fire round [Space]">
+            🚀 FIRE / LAUNCH [Space]
+          </button>
+          <button id="btn-action-lase" class="lab-btn primary" title="Pulse laser rangefinder [L]">
+            🎯 LASE [L]
+          </button>
+          <button id="btn-action-flare" class="lab-btn amber" title="Force target to dispense countermeasure flares [F]">
+            ✨ POP FLARES [F]
+          </button>
+          <button id="btn-action-cage" class="lab-btn" title="Toggle Seeker Cage / Uncage [C]">
+            🔒 CAGE / UNCAGE [C]
+          </button>
+        </div>
+      </div>
+
+      <!-- BOTTOM REAL-TIME STATS & SPEC CARD DRAWER -->
+      <div class="bottom-drawer">
+        <div class="bottom-drawer-tabs">
+          <div class="tab-btn-group">
+            <button class="drawer-tab-btn active" data-bottom-tab="stats">
+              📊 Live Calculated HUD Stats
+            </button>
+            <button class="drawer-tab-btn" data-bottom-tab="speccard">
+              🗂 Specimen Spec Card &amp; Idiom Notes
+            </button>
+          </div>
+          <span class="drawer-hint">Drag inside HUD glass to slew aim · Click any contact to track · Keys [1][2][3] switch Era Look</span>
+        </div>
+        <div id="bottom-drawer-content" class="bottom-drawer-content"></div>
+      </div>
+    </section>
+
+    <!-- 3. RIGHT RAIL: COLLAPSIBLE TUNABLE SLIDERS (FADERS) -->
+    <aside class="lab-sidebar-right">
+      <div class="fader-toolbar">
+        <div class="fader-toolbar-row">
+          <span class="fader-toolbar-title">TUNABLE FADERS (REAL-TIME)</span>
+          <div style="display: flex; gap: 5px;">
+            <button id="btn-expand-all" class="lab-btn" title="Expand or Collapse all slider sections">
+              ↕ Expand/Collapse
+            </button>
+            <button id="btn-reset-all" class="lab-btn" title="Reset all variables to specimen defaults">
+              ↺ Reset All
+            </button>
+          </div>
+        </div>
+      </div>
+      <div id="fader-accordion" class="fader-accordion"></div>
+    </aside>
+  </main>
+
+  <!-- MODAL 1: EXPORT ENTIRE LOOK & FEEL + STATS -->
+  <div id="export-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="modal-title">📦 EXPORT ENTIRE LOOK &amp; FEEL + STATS OR VARIABLES</span>
+        <button id="btn-close-export" class="lab-btn">✕ Close</button>
+      </div>
+      <div class="modal-body">
+        <div class="export-actions-grid">
+          <button id="btn-download-bundle" class="lab-btn success">
+            ⬇ Full Look + Stats (.hudlab.json)
+          </button>
+          <button id="btn-download-markdown" class="lab-btn primary">
+            ⬇ Spec &amp; Stats Report (.md)
+          </button>
+          <button id="btn-download-standalone-html" class="lab-btn amber">
+            ⬇ Self-Contained HTML (.html)
+          </button>
+          <button id="btn-download-png" class="lab-btn">
+            📸 Snapshot + Stats Bar (.png)
+          </button>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+          <div style="display: flex; gap: 6px;">
+            <button class="lab-btn active" data-export-tab="bundle-json">Full Look &amp; Stats JSON</button>
+            <button class="lab-btn" data-export-tab="markdown">Markdown Stats Report</button>
+            <button class="lab-btn" data-export-tab="vars-only">Variables Only JSON</button>
+            <button class="lab-btn" data-export-tab="esm">ES Module Code</button>
+          </div>
+          <button id="btn-export-copy-preview" class="lab-btn primary">
+            📋 Copy Preview to Clipboard
+          </button>
+        </div>
+
+        <textarea id="export-preview-code" class="export-code-textarea" readonly></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: PASTE / RESTORE VARIABLES FROM CLIPBOARD -->
+  <div id="paste-modal" class="modal-backdrop hidden">
+    <div class="modal-card" style="width: min(620px, 92vw);">
+      <div class="modal-header">
+        <span class="modal-title">📥 PASTE VARIABLES OR LOOK BUNDLE FROM MEMORY</span>
+        <button id="btn-close-paste" class="lab-btn">✕ Close</button>
+      </div>
+      <div class="modal-body">
+        <p style="color: var(--text-muted); font-size: 12px;">
+          Paste a JSON variables object, an ES Module <code>export const HUD_... = {...}</code> snippet, or a full <code>.hudlab.json</code> bundle below to immediately apply its variables in real time:
+        </p>
+        <textarea
+          id="paste-textarea"
+          class="export-code-textarea"
+          style="height: 220px;"
+          placeholder='{\n  "eraMode": "futuristic",\n  "fov": 40,\n  "zoom": 2.0,\n  "strokeWidth": 0.85,\n  "haloIntensity": 1.0,\n  "particleDensity": 1.25\n}'
+        ></textarea>
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button id="btn-apply-paste" class="lab-btn success">✓ Apply Variables Now</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="hud-toast" class="hud-toast">Copied to clipboard</div>
+
+  <script type="module">
+    import { initHudLabApp } from './src/app.js';
+    initHudLabApp();
+  </script>
+</body>
+</html>

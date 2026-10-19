@@ -1,0 +1,19 @@
+{
+  "name": "hudlab",
+  "version": "1.0.0",
+  "description": "Interactive laboratory and CLI for game targeting HUDs, missile lock-on idioms, and real-time tunable faders",
+  "type": "module",
+  "bin": {
+    "hudlab": "./bin/hudlab.mjs"
+  },
+  "scripts": {
+    "start": "node ./bin/hudlab.mjs serve",
+    "serve": "node ./bin/hudlab.mjs serve",
+    "list": "node ./bin/hudlab.mjs list",
+    "test": "node ./bin/hudlab.mjs test",
+    "build": "node ./bin/hudlab.mjs build"
+  },
+  "dependencies": {
+    "three": "^0.184.0"
+  }
+}
