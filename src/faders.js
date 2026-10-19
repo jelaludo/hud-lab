@@ -4,7 +4,7 @@
  * keyboard shortcuts, presets, and `window.__hudlabTest` can drive them in real time.
  */
 
-import { getSpecimen } from './catalogue.js';
+import { getSpecimen, SPECIMENS } from './catalogue.js';
 
 /**
  * The 5 Master Visual Era Modes available across all 19 specimens:
@@ -511,3 +511,101 @@ export function computeHudStats(faders, specimen, frame = null) {
     }
   };
 }
+
+/**
+ * Curated tactical color palettes for RNG Style Generation.
+ */
+export const RNG_STYLE_PALETTES = [
+  { name: 'Sky Tactical', look: 'raw', primaryColor: '#38bdf8', lockedColor: '#4ade80', warningColor: '#fb7185' },
+  { name: 'P1 Phosphor CRT', look: 'crt-inset', primaryColor: '#33ff66', lockedColor: '#fde047', warningColor: '#ff4444' },
+  { name: 'Synaptic Cyan/Violet', look: 'glass-bloom', primaryColor: '#67e8f9', lockedColor: '#c084fc', warningColor: '#f43f5e' },
+  { name: 'Shkval Amber Tube', look: 'amber-soviet', primaryColor: '#fbbf24', lockedColor: '#f97316', warningColor: '#ef4444' },
+  { name: 'FLIR Ironbow Thermal', look: 'flir-ironbow', primaryColor: '#fde047', lockedColor: '#fb923c', warningColor: '#f43f5e' },
+  { name: 'F-35 HMDS Emerald', look: 'monochrome-hmd', primaryColor: '#22c55e', lockedColor: '#a3e635', warningColor: '#f97316' },
+  { name: 'Ice Blue Hairline', look: 'raw', primaryColor: '#bae6fd', lockedColor: '#38bdf8', warningColor: '#fb7185' },
+  { name: 'Stealth Ultraviolet', look: 'glass-bloom', primaryColor: '#a78bfa', lockedColor: '#34d399', warningColor: '#fb7185' },
+  { name: 'Solar Flare Gold', look: 'raw', primaryColor: '#facc15', lockedColor: '#4ade80', warningColor: '#f87171' },
+  { name: 'Arctic White-Hot', look: 'raw', primaryColor: '#f8fafc', lockedColor: '#38bdf8', warningColor: '#f43f5e' },
+  { name: 'Neon Mint Vector', look: 'glass-bloom', primaryColor: '#2dd4bf', lockedColor: '#a3e635', warningColor: '#fb7185' },
+  { name: 'Crimson Aggressor', look: 'raw', primaryColor: '#fb7185', lockedColor: '#fde047', warningColor: '#ffffff' }
+];
+
+function randBetween(min, max, step = 0.05) {
+  const raw = min + Math.random() * (max - min);
+  const quantized = Math.round(raw / step) * step;
+  const decimals = step < 0.1 ? 2 : step < 1 ? 1 : 0;
+  return Number(quantized.toFixed(decimals));
+}
+
+/**
+ * Generate a random targeting specimen + a random visual & mechanical style for RNG Compare Mode.
+ */
+export function generateRandomSpecimenAndStyle(prevSpecimenId = null) {
+  const pool = SPECIMENS.filter((s) => s.id !== prevSpecimenId);
+  const specimen = pool[Math.floor(Math.random() * pool.length)] || SPECIMENS[0];
+
+  const eraKeys = Object.keys(ERA_MODES);
+  const eraMode = eraKeys[Math.floor(Math.random() * eraKeys.length)];
+  const faders = buildDefaultFaders(specimen.id, eraMode);
+
+  // Pick a random palette (70% chance custom tactical palette, 30% keep era/specimen native palette)
+  const palette = RNG_STYLE_PALETTES[Math.floor(Math.random() * RNG_STYLE_PALETTES.length)];
+  const useCustomPalette = Math.random() < 0.72;
+  if (useCustomPalette) {
+    faders.look = palette.look;
+    faders.primaryColor = palette.primaryColor;
+    faders.lockedColor = palette.lockedColor;
+    faders.warningColor = palette.warningColor;
+  }
+
+  // Vary strokeWidth, reticleScale, and effects while respecting the chosen Era's character
+  if (eraMode === 'default-thin' || eraMode === 'futuristic-low' || eraMode === 'futuristic') {
+    faders.strokeWidth = randBetween(0.5, 0.9, 0.05);
+  } else if (eraMode === 'retro-80s') {
+    faders.strokeWidth = randBetween(1.8, 3.0, 0.05);
+    faders.crtCurvature = randBetween(0.45, 0.95, 0.05);
+    faders.phosphorPersistence = randBetween(0.55, 0.88, 0.02);
+  } else {
+    faders.strokeWidth = randBetween(1.0, 2.4, 0.05);
+  }
+
+  faders.reticleScale = randBetween(0.85, 1.35, 0.05);
+  faders.boxSizePx = randBetween(95, 155, 5);
+
+  if (eraMode === 'futuristic') {
+    faders.haloIntensity = randBetween(0.6, 1.25, 0.05);
+    faders.particleDensity = randBetween(0.85, 1.75, 0.05);
+    faders.bloomStrength = randBetween(0.45, 0.85, 0.05);
+  } else if (eraMode === 'futuristic-low') {
+    faders.haloIntensity = randBetween(0.05, 0.18, 0.05);
+    faders.particleDensity = randBetween(0.65, 1.35, 0.05);
+    faders.bloomStrength = randBetween(0.05, 0.15, 0.05);
+  } else if (eraMode === 'default-thin') {
+    faders.haloIntensity = randBetween(0.0, 0.12, 0.05);
+    faders.bloomStrength = randBetween(0.05, 0.18, 0.05);
+  }
+
+  // Randomize specimen-specific geometry tunables within a tasteful 20%-85% band
+  if (specimen.specimenFaders) {
+    for (const sf of specimen.specimenFaders) {
+      const span = sf.max - sf.min;
+      const lo = sf.min + span * 0.15;
+      const hi = sf.min + span * 0.85;
+      faders[sf.key] = randBetween(lo, hi, sf.step || 1);
+    }
+  }
+
+  const styleMeta = {
+    eraMode,
+    eraLabel: ERA_MODES[eraMode]?.shortLabel || eraMode,
+    paletteName: useCustomPalette ? palette.name : 'Native Spec Palette',
+    strokeWidth: faders.strokeWidth,
+    reticleScale: faders.reticleScale,
+    primaryColor: faders.primaryColor,
+    lockedColor: faders.lockedColor,
+    warningColor: faders.warningColor
+  };
+
+  return { specimen, faders, styleMeta };
+}
+

@@ -401,6 +401,341 @@ body {
   grid-template-columns: 1fr 1fr;
 }
 
+.viewport-split-container.rng-active {
+  grid-template-columns: 1.25fr 1fr;
+}
+
+.lab-workspace.rng-mode-active {
+  grid-template-columns: 0px 1fr 345px;
+}
+
+.lab-workspace.rng-mode-active .lab-sidebar-left {
+  border-right: none;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rng-mode-btn.active {
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.25), rgba(56, 189, 248, 0.25));
+  border-color: var(--accent-purple);
+  color: #f8fafc;
+  box-shadow: 0 0 12px rgba(167, 139, 250, 0.35);
+}
+
+.primary-viewport-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* RNG Left Screen Overlay Deck (<next> and <keep>) */
+.rng-left-overlay {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 42px;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(6, 11, 20, 0.88);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  border-radius: 6px;
+  padding: 9px 14px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.65);
+}
+
+.rng-left-overlay.hidden {
+  display: none;
+}
+
+.rng-left-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-family: var(--font-mono);
+}
+
+.rng-badge {
+  font-size: 10px;
+  font-weight: 800;
+  color: #e0f2fe;
+  background: rgba(167, 139, 250, 0.28);
+  border: 1px solid rgba(167, 139, 250, 0.65);
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+
+.rng-candidate-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.rng-candidate-style {
+  font-size: 11px;
+  color: var(--accent-cyan);
+  background: rgba(56, 189, 248, 0.12);
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+
+.rng-swatches {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rng-swatch-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  display: inline-block;
+}
+
+.rng-left-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rng-action-btn {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 800;
+  padding: 7px 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.14s ease;
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+}
+
+.rng-btn-next {
+  background: rgba(56, 189, 248, 0.18);
+  border: 1.5px solid var(--accent-cyan);
+  color: #e0f2fe;
+}
+
+.rng-btn-next:hover {
+  background: rgba(56, 189, 248, 0.32);
+  transform: translateY(-1px);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+}
+
+.rng-btn-keep {
+  background: rgba(74, 222, 128, 0.2);
+  border: 1.5px solid var(--accent-green);
+  color: #dcfce7;
+}
+
+.rng-btn-keep:hover {
+  background: rgba(74, 222, 128, 0.34);
+  transform: translateY(-1px);
+  box-shadow: 0 0 14px rgba(74, 222, 128, 0.4);
+}
+
+/* RNG Right Shortlist Panel (4 Smaller Screens in a 2x2 Grid) */
+.rng-shortlist-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  overflow: hidden;
+  height: 100%;
+}
+
+.rng-shortlist-panel.hidden {
+  display: none;
+}
+
+.rng-shortlist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  background: var(--bg-panel-elevated);
+  border-bottom: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+}
+
+.rng-shortlist-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rng-shortlist-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--accent-cyan);
+  letter-spacing: 0.05em;
+}
+
+.rng-shortlist-count {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent-green);
+  background: rgba(74, 222, 128, 0.14);
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.rng-shortlist-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.rng-slots-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 6px;
+  padding: 6px;
+  background: var(--bg-deep);
+  overflow: hidden;
+}
+
+.rng-slot-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 5px;
+  overflow: hidden;
+  position: relative;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.rng-slot-card.filled {
+  border-color: rgba(56, 189, 248, 0.45);
+}
+
+.rng-slot-card.active-inspected {
+  border-color: var(--accent-green);
+  box-shadow: 0 0 0 1px var(--accent-green);
+}
+
+.rng-slot-topbar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 7px;
+  background: var(--bg-panel-elevated);
+  border-bottom: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  min-height: 26px;
+}
+
+.rng-slot-num {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--accent-cyan);
+  background: rgba(56, 189, 248, 0.14);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.rng-slot-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-main);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rng-slot-btns {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.rng-slot-btn {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--bg-deep);
+  border: 1px solid var(--border-subtle);
+  padding: 2px 5px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.rng-slot-btn:hover {
+  color: var(--text-main);
+  border-color: var(--accent-cyan);
+}
+
+.rng-slot-stage {
+  flex: 1;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #050a14;
+}
+
+.rng-slot-viewport {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Compact HUD overlay chrome inside the 4 smaller shortlist screens */
+.rng-slot-viewport .hud-top-bar {
+  padding: 4px 6px;
+  transform: scale(0.78);
+  transform-origin: top left;
+  width: 128%;
+}
+
+.rng-slot-viewport .hud-bottom-bar {
+  display: none;
+}
+
+.rng-slot-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 12px;
+  background: rgba(6, 11, 20, 0.92);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  gap: 4px;
+}
+
+.rng-slot-empty.hidden {
+  display: none;
+}
+
+.rng-slot-empty span {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.rng-slot-empty small {
+  font-size: 9.5px;
+  color: var(--text-dim);
+  max-width: 180px;
+  line-height: 1.35;
+}
+
 .hud-viewport-root {
   position: relative;
   width: 100%;

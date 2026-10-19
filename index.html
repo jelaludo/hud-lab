@@ -46,6 +46,10 @@
         <span>◫ Compare</span>
       </button>
       <select id="compare-specimen-select" class="lab-select" disabled title="Select second specimen for comparison"></select>
+
+      <button id="btn-toggle-rng" class="lab-btn rng-mode-btn" title="RNG Compare Mode: Randomize targeting type + style on the left, click <next> or <keep> to build a 4-style shortlist on the right [R]">
+        <span>🎲 RNG Compare</span>
+      </button>
     </div>
 
     <!-- MEMORY COPY-PASTE & FULL LOOK/STATS EXPORT BAR -->
@@ -87,8 +91,125 @@
     <!-- 2. CENTER WORKSPACE: LIVE 3D+HUD VIEWPORT(S) + OPERATOR DECK + LIVE STATS / SPEC CARD -->
     <section class="lab-center-stage">
       <div id="viewport-split-container" class="viewport-split-container">
-        <div id="primary-viewport" class="hud-viewport-root"></div>
+        <div id="primary-viewport-wrap" class="primary-viewport-wrap">
+          <div id="primary-viewport" class="hud-viewport-root"></div>
+
+          <!-- RNG COMPARE OVERLAY BAR ON LARGE LEFT SCREEN -->
+          <div id="rng-left-overlay" class="rng-left-overlay hidden">
+            <div class="rng-left-meta">
+              <span class="rng-badge">🎲 RNG CANDIDATE</span>
+              <span id="rng-candidate-title" class="rng-candidate-title">E-03 · Stalheart Quiver</span>
+              <span id="rng-candidate-style" class="rng-candidate-style">1) Default · Sky Tactical · 1.75px</span>
+              <span id="rng-candidate-swatches" class="rng-swatches"></span>
+            </div>
+            <div class="rng-left-actions">
+              <button id="btn-rng-next" class="rng-action-btn rng-btn-next" title="Randomize targeting type and style again [Key N]">
+                &lt;next&gt; 🎲
+              </button>
+              <button id="btn-rng-keep" class="rng-action-btn rng-btn-keep" title="Keep this HUD &amp; style in the 4-screen shortlist on the right [Key K]">
+                &lt;keep&gt; →
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div id="compare-viewport" class="hud-viewport-root hidden"></div>
+
+        <!-- RNG COMPARE RIGHT PANEL: SHORTLIST OF 4 SMALLER SCREENS -->
+        <div id="rng-shortlist-panel" class="rng-shortlist-panel hidden">
+          <div class="rng-shortlist-header">
+            <div class="rng-shortlist-title-wrap">
+              <span class="rng-shortlist-title">KEPT SHORTLIST (4 STYLES)</span>
+              <span id="rng-shortlist-count" class="rng-shortlist-count">0 / 4</span>
+            </div>
+            <div class="rng-shortlist-actions">
+              <button id="btn-rng-fill-4" class="lab-btn" title="Populate all 4 shortlist screens with random targeting types &amp; styles">
+                🎲 Fill All 4
+              </button>
+              <button id="btn-rng-clear" class="lab-btn" title="Clear all 4 shortlist slots">
+                ↺ Clear
+              </button>
+            </div>
+          </div>
+          <div id="rng-slots-grid" class="rng-slots-grid">
+            <!-- 4 Smaller Live HUD Screens (Slots 0..3) -->
+            <div class="rng-slot-card" data-rng-slot="0">
+              <div class="rng-slot-topbar">
+                <span class="rng-slot-num">#1</span>
+                <span class="rng-slot-label">Empty Slot</span>
+                <div class="rng-slot-btns">
+                  <button class="rng-slot-btn" data-slot-load="0" title="Load this kept style onto the large left screen &amp; faders">← Load</button>
+                  <button class="rng-slot-btn" data-slot-copy="0" title="Copy this slot's variables to clipboard">📋</button>
+                  <button class="rng-slot-btn" data-slot-remove="0" title="Remove from shortlist">✕</button>
+                </div>
+              </div>
+              <div class="rng-slot-stage">
+                <div class="rng-slot-viewport" data-slot-viewport="0"></div>
+                <div class="rng-slot-empty" data-slot-empty="0">
+                  <span>SLOT #1 EMPTY</span>
+                  <small>Click &lt;keep&gt; on the left screen to pin a style here</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="rng-slot-card" data-rng-slot="1">
+              <div class="rng-slot-topbar">
+                <span class="rng-slot-num">#2</span>
+                <span class="rng-slot-label">Empty Slot</span>
+                <div class="rng-slot-btns">
+                  <button class="rng-slot-btn" data-slot-load="1" title="Load this kept style onto the large left screen &amp; faders">← Load</button>
+                  <button class="rng-slot-btn" data-slot-copy="1" title="Copy this slot's variables to clipboard">📋</button>
+                  <button class="rng-slot-btn" data-slot-remove="1" title="Remove from shortlist">✕</button>
+                </div>
+              </div>
+              <div class="rng-slot-stage">
+                <div class="rng-slot-viewport" data-slot-viewport="1"></div>
+                <div class="rng-slot-empty" data-slot-empty="1">
+                  <span>SLOT #2 EMPTY</span>
+                  <small>Click &lt;keep&gt; on the left screen to pin a style here</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="rng-slot-card" data-rng-slot="2">
+              <div class="rng-slot-topbar">
+                <span class="rng-slot-num">#3</span>
+                <span class="rng-slot-label">Empty Slot</span>
+                <div class="rng-slot-btns">
+                  <button class="rng-slot-btn" data-slot-load="2" title="Load this kept style onto the large left screen &amp; faders">← Load</button>
+                  <button class="rng-slot-btn" data-slot-copy="2" title="Copy this slot's variables to clipboard">📋</button>
+                  <button class="rng-slot-btn" data-slot-remove="2" title="Remove from shortlist">✕</button>
+                </div>
+              </div>
+              <div class="rng-slot-stage">
+                <div class="rng-slot-viewport" data-slot-viewport="2"></div>
+                <div class="rng-slot-empty" data-slot-empty="2">
+                  <span>SLOT #3 EMPTY</span>
+                  <small>Click &lt;keep&gt; on the left screen to pin a style here</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="rng-slot-card" data-rng-slot="3">
+              <div class="rng-slot-topbar">
+                <span class="rng-slot-num">#4</span>
+                <span class="rng-slot-label">Empty Slot</span>
+                <div class="rng-slot-btns">
+                  <button class="rng-slot-btn" data-slot-load="3" title="Load this kept style onto the large left screen &amp; faders">← Load</button>
+                  <button class="rng-slot-btn" data-slot-copy="3" title="Copy this slot's variables to clipboard">📋</button>
+                  <button class="rng-slot-btn" data-slot-remove="3" title="Remove from shortlist">✕</button>
+                </div>
+              </div>
+              <div class="rng-slot-stage">
+                <div class="rng-slot-viewport" data-slot-viewport="3"></div>
+                <div class="rng-slot-empty" data-slot-empty="3">
+                  <span>SLOT #4 EMPTY</span>
+                  <small>Click &lt;keep&gt; on the left screen to pin a style here</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- OPERATOR ACTION DECK -->

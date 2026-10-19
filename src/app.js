@@ -12,7 +12,8 @@ import {
   buildDefaultFaders,
   applyEraModeToFaders,
   getModifiedFaders,
-  computeHudStats
+  computeHudStats,
+  generateRandomSpecimenAndStyle
 } from './faders.js';
 import { createWorld } from './world.js';
 import { createSeat } from './seat.js';
@@ -29,16 +30,23 @@ import {
 } from './export.js';
 
 export function initHudLabApp() {
-  // Parse URL params (`?specimen=saclos&era=futuristic&compare=arcade-lock&scenario=masked`)
+  // Parse URL params (`?specimen=saclos&era=futuristic&compare=arcade-lock&scenario=masked&rng=1`)
   const params = new URLSearchParams(window.location.search);
   const initialSpecimenId = params.get('specimen') || 'stalheart-quiver';
   const initialCompareId = params.get('compare') || '';
   const initialScenario = params.get('scenario') || '';
   const initialEra = params.get('era') || 'default';
+  const initialRng = params.get('rng') === '1';
 
   let activeSpecimen = getSpecimen(initialSpecimenId);
-  let compareEnabled = Boolean(initialCompareId);
+  let compareEnabled = Boolean(initialCompareId) && !initialRng;
   let compareSpecimen = getSpecimen(initialCompareId || 'arcade-lock');
+  let rngCompareEnabled = initialRng;
+  let rngCurrentStyleMeta = null;
+  const rngShortlist = [null, null, null, null];
+  const rngSlotControllers = [null, null, null, null];
+  let rngNextReplaceIndex = 0;
+  let activeInspectedSlot = -1;
 
   // Live fader state
   let faders = buildDefaultFaders(activeSpecimen.id, initialEra);
@@ -60,6 +68,7 @@ export function initHudLabApp() {
   const audioEngine = createAudioEngine();
 
   // DOM References
+  const workspaceEl = document.querySelector('.lab-workspace');
   const familyFilterEl = document.getElementById('family-filter-bar');
   const specimenSearchEl = document.getElementById('specimen-search');
   const specimenListEl = document.getElementById('specimen-list');
@@ -69,6 +78,13 @@ export function initHudLabApp() {
   const viewportSplitContainer = document.getElementById('viewport-split-container');
   const compareToggleBtn = document.getElementById('btn-toggle-compare');
   const compareSelectEl = document.getElementById('compare-specimen-select');
+  const rngToggleBtn = document.getElementById('btn-toggle-rng');
+  const rngLeftOverlayEl = document.getElementById('rng-left-overlay');
+  const rngCandidateTitleEl = document.getElementById('rng-candidate-title');
+  const rngCandidateStyleEl = document.getElementById('rng-candidate-style');
+  const rngCandidateSwatchesEl = document.getElementById('rng-candidate-swatches');
+  const rngShortlistPanelEl = document.getElementById('rng-shortlist-panel');
+  const rngShortlistCountEl = document.getElementById('rng-shortlist-count');
   const targetQuickBarEl = document.getElementById('target-quick-bar');
   const bottomDrawerContentEl = document.getElementById('bottom-drawer-content');
   const toastEl = document.getElementById('hud-toast');
@@ -471,6 +487,17 @@ export function initHudLabApp() {
   function setEraMode(eraMode) {
     if (!ERA_MODES[eraMode]) return;
     applyEraModeToFaders(faders, activeSpecimen.id, eraMode);
+    if (rngCurrentStyleMeta) {
+      rngCurrentStyleMeta.eraMode = eraMode;
+      rngCurrentStyleMeta.eraLabel = ERA_MODES[eraMode]?.shortLabel || eraMode;
+    }
+    if (activeInspectedSlot >= 0 && rngShortlist[activeInspectedSlot]) {
+      rngShortlist[activeInspectedSlot].faders = JSON.parse(JSON.stringify(faders));
+      rngShortlist[activeInspectedSlot].styleMeta.eraLabel =
+        ERA_MODES[eraMode]?.shortLabel || eraMode;
+      updateRngShortlistUI();
+    }
+    updateRngLeftOverlayUI();
     syncEraButtonsUI();
     renderFaderGroups();
     renderBottomDrawer(primarySeat.state());
@@ -485,7 +512,7 @@ export function initHudLabApp() {
     showToast(`Applied Look: ${ERA_MODES[eraMode].name}`);
   }
 
-  // Bind Top-Bar 3-Way Era Switcher Buttons
+  // Bind Top-Bar 5-Way Era Switcher Buttons
   document.querySelectorAll('[data-set-era]').forEach((btn) => {
     btn.addEventListener('click', () => {
       setEraMode(btn.dataset.setEra);
@@ -523,6 +550,12 @@ export function initHudLabApp() {
         faders.decoyRate = sc.decoyRate;
       }
     }
+
+    if (activeInspectedSlot >= 0 && rngShortlist[activeInspectedSlot]) {
+      rngShortlist[activeInspectedSlot].faders = JSON.parse(JSON.stringify(faders));
+      updateRngShortlistUI();
+    }
+    updateRngLeftOverlayUI();
 
     if (rebuildUi) {
       renderFaderGroups();
@@ -573,6 +606,9 @@ export function initHudLabApp() {
 
   function setCompareMode(enabled) {
     compareEnabled = Boolean(enabled);
+    if (compareEnabled && rngCompareEnabled) {
+      setRngCompareMode(false);
+    }
     viewportSplitContainer.classList.toggle('compare-active', compareEnabled);
     compareViewportEl.classList.toggle('hidden', !compareEnabled);
     compareToggleBtn?.classList.toggle('active', compareEnabled);
@@ -581,6 +617,303 @@ export function initHudLabApp() {
     }
     if (compareEnabled && !comparePresentation) {
       comparePresentation = createPresentation(compareViewportEl);
+    }
+  }
+
+  // ============================================================================
+  // 3B. RNG COMPARE MODE (LEFT LARGE RANDOM SCREEN + RIGHT 4-STYLE SHORTLIST)
+  // ============================================================================
+  function ensureRngSlotController(slotIdx) {
+    if (rngSlotControllers[slotIdx]) return rngSlotControllers[slotIdx];
+    const viewportEl = document.querySelector(`[data-slot-viewport="${slotIdx}"]`);
+    if (!viewportEl) return null;
+
+    const presentation = createPresentation(viewportEl);
+    const seat = createSeat(viewportEl, {
+      getSpecimen: () => rngShortlist[slotIdx]?.specimen || activeSpecimen,
+      getFaders: () => {
+        const slotFaders = rngShortlist[slotIdx]?.faders || faders;
+        return {
+          ...slotFaders,
+          scenarioId: faders.scenarioId,
+          contactCount: faders.contactCount,
+          contactSpeed: faders.contactSpeed,
+          terrainMasking: faders.terrainMasking,
+          decoyRate: faders.decoyRate,
+          showInset: false,
+          boxSizePx: Math.min(95, (slotFaders.boxSizePx ?? 110) * 0.78),
+          reticleScale: (slotFaders.reticleScale ?? 1.0) * 0.82
+        };
+      },
+      getSharedWorld: () => sharedWorld,
+      getViewport: () => ({
+        width: viewportEl.clientWidth || 260,
+        height: viewportEl.clientHeight || 190,
+        dpr: window.devicePixelRatio || 1
+      })
+    });
+    seat.aim(primarySeat.getAutoPilotContactId() || 'c1');
+    rngSlotControllers[slotIdx] = { presentation, seat, viewportEl };
+    return rngSlotControllers[slotIdx];
+  }
+
+  function updateRngLeftOverlayUI() {
+    if (!rngCandidateTitleEl || !rngCandidateStyleEl || !rngCandidateSwatchesEl) return;
+    rngCandidateTitleEl.textContent = `${activeSpecimen.code} · ${activeSpecimen.name}`;
+    const eraLabel =
+      rngCurrentStyleMeta?.eraLabel ||
+      ERA_MODES[faders.eraMode || 'default']?.shortLabel ||
+      '1) Default';
+    const palName = rngCurrentStyleMeta?.paletteName || faders.look || 'Custom';
+    rngCandidateStyleEl.textContent = `${eraLabel} · ${palName} · ${faders.strokeWidth}px`;
+    rngCandidateSwatchesEl.innerHTML = [
+      faders.primaryColor,
+      faders.lockedColor,
+      faders.warningColor
+    ]
+      .map(
+        (c) =>
+          `<span class="rng-swatch-dot" style="background:${c}" title="${c}"></span>`
+      )
+      .join('');
+  }
+
+  function updateRngShortlistUI() {
+    const filledCount = rngShortlist.filter(Boolean).length;
+    if (rngShortlistCountEl) {
+      rngShortlistCountEl.textContent = `${filledCount} / 4`;
+    }
+    for (let i = 0; i < 4; i++) {
+      const cardEl = document.querySelector(`[data-rng-slot="${i}"]`);
+      const emptyEl = document.querySelector(`[data-slot-empty="${i}"]`);
+      const labelEl = cardEl?.querySelector('.rng-slot-label');
+      const item = rngShortlist[i];
+
+      if (cardEl) {
+        cardEl.classList.toggle('filled', Boolean(item));
+        cardEl.classList.toggle('active-inspected', activeInspectedSlot === i && Boolean(item));
+      }
+      if (emptyEl) {
+        emptyEl.classList.toggle('hidden', Boolean(item));
+      }
+      if (labelEl) {
+        if (item) {
+          labelEl.innerHTML = `
+            <span style="color:${item.faders.primaryColor};font-weight:700">${item.specimen.code}</span>
+            ${item.specimen.shortName} · <span style="opacity:0.8">${item.styleMeta.eraLabel} (${item.faders.strokeWidth}px)</span>
+          `;
+        } else {
+          labelEl.textContent = 'Empty Slot';
+        }
+      }
+    }
+  }
+
+  function rollNextRandomCandidate(silent = false) {
+    const rolled = generateRandomSpecimenAndStyle(activeSpecimen.id);
+    const prevScenario = {
+      scenarioId: faders.scenarioId,
+      contactCount: faders.contactCount,
+      contactSpeed: faders.contactSpeed,
+      terrainMasking: faders.terrainMasking,
+      decoyRate: faders.decoyRate,
+      audioEnabled: faders.audioEnabled,
+      audioVolume: faders.audioVolume
+    };
+    activeSpecimen = rolled.specimen;
+    faders = { ...rolled.faders, ...prevScenario };
+    rngCurrentStyleMeta = rolled.styleMeta;
+    activeInspectedSlot = -1;
+
+    primarySeat.resetLock();
+    primarySeat.aim(primarySeat.getAutoPilotContactId() || 'c1');
+
+    syncEraButtonsUI();
+    renderSpecimenList();
+    renderFaderGroups();
+    updateRngLeftOverlayUI();
+    updateRngShortlistUI();
+    renderBottomDrawer(primarySeat.state());
+
+    if (!silent) {
+      showToast(
+        `🎲 Rolled ${activeSpecimen.code} ${activeSpecimen.shortName} · ${rolled.styleMeta.eraLabel} (${rolled.styleMeta.paletteName})`
+      );
+    }
+  }
+
+  function keepCurrentCandidateToShortlist(autoAdvance = true) {
+    let targetSlot = rngShortlist.findIndex((item) => item === null);
+    if (targetSlot === -1) {
+      targetSlot = rngNextReplaceIndex % 4;
+      rngNextReplaceIndex = (rngNextReplaceIndex + 1) % 4;
+    }
+
+    const styleMeta = rngCurrentStyleMeta || {
+      eraMode: faders.eraMode || 'default',
+      eraLabel: ERA_MODES[faders.eraMode || 'default']?.shortLabel || 'Custom',
+      paletteName: faders.look || 'Custom',
+      strokeWidth: faders.strokeWidth,
+      reticleScale: faders.reticleScale,
+      primaryColor: faders.primaryColor,
+      lockedColor: faders.lockedColor,
+      warningColor: faders.warningColor
+    };
+
+    rngShortlist[targetSlot] = {
+      specimen: activeSpecimen,
+      faders: JSON.parse(JSON.stringify(faders)),
+      styleMeta: { ...styleMeta }
+    };
+
+    const ctrl = ensureRngSlotController(targetSlot);
+    if (ctrl) {
+      ctrl.seat.resetLock();
+      ctrl.seat.aim(primarySeat.getAutoPilotContactId() || 'c1');
+    }
+
+    const keptLabel = `${activeSpecimen.code} ${activeSpecimen.shortName}`;
+    updateRngShortlistUI();
+
+    if (autoAdvance) {
+      rollNextRandomCandidate(true);
+      showToast(`📌 Kept ${keptLabel} in Slot #${targetSlot + 1} · Rolled next candidate!`);
+    } else {
+      activeInspectedSlot = targetSlot;
+      updateRngShortlistUI();
+      showToast(`📌 Kept ${keptLabel} in Slot #${targetSlot + 1}`);
+    }
+  }
+
+  function loadRngSlotToLeft(slotIdx) {
+    const item = rngShortlist[slotIdx];
+    if (!item) return;
+    activeSpecimen = item.specimen;
+    faders = JSON.parse(JSON.stringify(item.faders));
+    rngCurrentStyleMeta = { ...item.styleMeta };
+    activeInspectedSlot = slotIdx;
+
+    primarySeat.resetLock();
+    primarySeat.aim(primarySeat.getAutoPilotContactId() || 'c1');
+
+    syncEraButtonsUI();
+    renderSpecimenList();
+    renderFaderGroups();
+    updateRngLeftOverlayUI();
+    updateRngShortlistUI();
+    renderBottomDrawer(primarySeat.state());
+    showToast(`Loaded Slot #${slotIdx + 1} (${item.specimen.code} ${item.specimen.shortName}) to Left Screen`);
+  }
+
+  function removeRngSlot(slotIdx) {
+    if (!rngShortlist[slotIdx]) return;
+    rngShortlist[slotIdx] = null;
+    if (activeInspectedSlot === slotIdx) {
+      activeInspectedSlot = -1;
+    }
+    updateRngShortlistUI();
+    showToast(`Cleared Slot #${slotIdx + 1}`);
+  }
+
+  function fillAll4RngSlots() {
+    let lastId = activeSpecimen.id;
+    for (let i = 0; i < 4; i++) {
+      const rolled = generateRandomSpecimenAndStyle(lastId);
+      lastId = rolled.specimen.id;
+      rngShortlist[i] = {
+        specimen: rolled.specimen,
+        faders: JSON.parse(JSON.stringify(rolled.faders)),
+        styleMeta: { ...rolled.styleMeta }
+      };
+      const ctrl = ensureRngSlotController(i);
+      if (ctrl) {
+        ctrl.seat.resetLock();
+        ctrl.seat.aim(primarySeat.getAutoPilotContactId() || 'c1');
+      }
+    }
+    updateRngShortlistUI();
+    showToast('🎲 Populated all 4 shortlist screens with random styles!');
+  }
+
+  function clearRngShortlist() {
+    for (let i = 0; i < 4; i++) {
+      rngShortlist[i] = null;
+    }
+    rngNextReplaceIndex = 0;
+    activeInspectedSlot = -1;
+    updateRngShortlistUI();
+    showToast('Cleared all 4 shortlist slots');
+  }
+
+  function setRngCompareMode(enabled) {
+    rngCompareEnabled = Boolean(enabled);
+    if (rngCompareEnabled && compareEnabled) {
+      setCompareMode(false);
+    }
+    workspaceEl?.classList.toggle('rng-mode-active', rngCompareEnabled);
+    viewportSplitContainer?.classList.toggle('rng-active', rngCompareEnabled);
+    rngLeftOverlayEl?.classList.toggle('hidden', !rngCompareEnabled);
+    rngShortlistPanelEl?.classList.toggle('hidden', !rngCompareEnabled);
+    rngToggleBtn?.classList.toggle('active', rngCompareEnabled);
+
+    const url = new URL(window.location.href);
+    if (rngCompareEnabled) {
+      url.searchParams.set('rng', '1');
+      rollNextRandomCandidate(true);
+      updateRngShortlistUI();
+      showToast('🎲 RNG Compare Mode: Click <next> to randomize or <keep> to shortlist up to 4 styles');
+    } else {
+      url.searchParams.delete('rng');
+    }
+    window.history.replaceState({}, '', url);
+  }
+
+  function setupRngCompareControls() {
+    rngToggleBtn?.addEventListener('click', () => {
+      setRngCompareMode(!rngCompareEnabled);
+    });
+    document.getElementById('btn-rng-next')?.addEventListener('click', () => {
+      rollNextRandomCandidate(false);
+    });
+    document.getElementById('btn-rng-keep')?.addEventListener('click', () => {
+      keepCurrentCandidateToShortlist(true);
+    });
+    document.getElementById('btn-rng-fill-4')?.addEventListener('click', () => {
+      fillAll4RngSlots();
+    });
+    document.getElementById('btn-rng-clear')?.addEventListener('click', () => {
+      clearRngShortlist();
+    });
+
+    document.querySelectorAll('[data-slot-load]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        loadRngSlotToLeft(Number(btn.dataset.slotLoad));
+      });
+    });
+    document.querySelectorAll('[data-slot-copy]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const idx = Number(btn.dataset.slotCopy);
+        const item = rngShortlist[idx];
+        if (!item) {
+          showToast(`Slot #${idx + 1} is empty`);
+          return;
+        }
+        const text = formatVariablesOnly(item.faders, item.specimen, copyFormat);
+        await copyTextToClipboard(text);
+        showToast(`Copied Slot #${idx + 1} (${item.specimen.shortName}) variables to clipboard!`);
+      });
+    });
+    document.querySelectorAll('[data-slot-remove]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        removeRngSlot(Number(btn.dataset.slotRemove));
+      });
+    });
+
+    if (rngCompareEnabled) {
+      setRngCompareMode(true);
+    } else {
+      updateRngLeftOverlayUI();
+      updateRngShortlistUI();
     }
   }
 
@@ -612,13 +945,16 @@ export function initHudLabApp() {
 
       targetQuickBarEl.querySelectorAll('[data-aim-id]').forEach((btn) => {
         btn.addEventListener('click', () => {
-          primarySeat.aim(btn.dataset.aimId);
-          compareSeat.aim(btn.dataset.aimId);
+          const cid = btn.dataset.aimId;
+          primarySeat.aim(cid);
+          compareSeat.aim(cid);
+          rngSlotControllers.forEach((ctrl) => ctrl?.seat.aim(cid));
         });
       });
       targetQuickBarEl.querySelector('[data-aim-sky]')?.addEventListener('click', () => {
         primarySeat.aimSky();
         compareSeat.aimSky();
+        rngSlotControllers.forEach((ctrl) => ctrl?.seat.aimSky());
       });
     }
   }
@@ -630,6 +966,7 @@ export function initHudLabApp() {
 
   document.getElementById('btn-action-lase')?.addEventListener('click', () => {
     primarySeat.lase();
+    rngSlotControllers.forEach((ctrl) => ctrl?.seat.lase());
     showToast('Laser Rangefinder Pulsed');
   });
 
@@ -640,6 +977,7 @@ export function initHudLabApp() {
 
   document.getElementById('btn-action-cage')?.addEventListener('click', () => {
     const caged = primarySeat.cage();
+    rngSlotControllers.forEach((ctrl) => ctrl?.seat.forceCage(caged));
     showToast(caged ? 'Seeker CAGED to Boresight' : 'Seeker UNCAGED');
   });
 
@@ -655,10 +993,19 @@ export function initHudLabApp() {
       showToast('Target Dispensed Flares');
     } else if (e.key === 'l' || e.key === 'L') {
       primarySeat.lase();
+      rngSlotControllers.forEach((ctrl) => ctrl?.seat.lase());
       showToast('Laser Rangefinder Pulsed');
     } else if (e.key === 'c' || e.key === 'C') {
       const caged = primarySeat.cage();
+      rngSlotControllers.forEach((ctrl) => ctrl?.seat.forceCage(caged));
       showToast(caged ? 'Seeker CAGED' : 'Seeker UNCAGED');
+    } else if (e.key === 'r' || e.key === 'R') {
+      setRngCompareMode(!rngCompareEnabled);
+    } else if (e.key === 'n' || e.key === 'N') {
+      if (!rngCompareEnabled) setRngCompareMode(true);
+      else rollNextRandomCandidate(false);
+    } else if (e.key === 'k' || e.key === 'K') {
+      if (rngCompareEnabled) keepCurrentCandidateToShortlist(true);
     } else if (e.key === '1') {
       setEraMode('default');
     } else if (e.key === '2') {
@@ -951,6 +1298,10 @@ export function initHudLabApp() {
     cage: (val) => (val !== undefined ? primarySeat.forceCage(val) : primarySeat.cage()),
     setSpecimen: (id) => selectSpecimen(id, false),
     setEra: (era) => setEraMode(era),
+    setRngCompare: (on) => setRngCompareMode(on),
+    rngNext: () => rollNextRandomCandidate(true),
+    rngKeep: () => keepCurrentCandidateToShortlist(true),
+    getRngShortlist: () => rngShortlist.map((s) => (s ? { specimenId: s.specimen.id, faders: { ...s.faders } } : null)),
     setFader: (key, val) => applyFaderChange(key, val, true),
     getFaders: () => ({ ...faders }),
     getStats: () => computeHudStats(faders, activeSpecimen, primarySeat.state()),
@@ -972,6 +1323,7 @@ export function initHudLabApp() {
   renderSpecimenList();
   renderFaderGroups();
   setupCompareControls();
+  setupRngCompareControls();
   syncEraButtonsUI();
 
   let lastTime = performance.now();
@@ -985,6 +1337,15 @@ export function initHudLabApp() {
     if (compareEnabled && comparePresentation) {
       const compareFrame = compareSeat.tick(dt, primaryFrame.world);
       comparePresentation.render(compareFrame);
+    }
+
+    if (rngCompareEnabled) {
+      for (let i = 0; i < 4; i++) {
+        if (rngShortlist[i] && rngSlotControllers[i]) {
+          const slotFrame = rngSlotControllers[i].seat.tick(dt, primaryFrame.world);
+          rngSlotControllers[i].presentation.render(slotFrame);
+        }
+      }
     }
 
     renderTargetQuickBar(primaryFrame);
