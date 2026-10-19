@@ -214,13 +214,14 @@ export function createPresentation(container) {
     updateTerrainGeometry(world.ridgeScale);
 
     const era = faders.eraMode || 'default';
+    const isFuturistic = era === 'futuristic' || era === 'futuristic-low';
     const look = faders.look || 'raw';
     const pDensity = faders.particleDensity ?? 0;
 
     // 3D Spatial Particles visibility & drift
     if (pDensity > 0.05) {
       spatialParticles.visible = true;
-      spatialMat.opacity = Math.min(0.85, pDensity * 0.45);
+      spatialMat.opacity = Math.min(0.85, pDensity * (era === 'futuristic-low' ? 0.28 : 0.45));
       spatialMat.color.set(faders.primaryColor || '#67e8f9');
       spatialParticles.rotation.y = world.time * 0.03;
     } else {
@@ -234,36 +235,36 @@ export function createPresentation(container) {
       terrainMat.color.setHex(0x021206);
       wireMat.color.set(faders.primaryColor || '#33ff66');
       wireMat.opacity = 0.72;
-    } else if (era === 'futuristic') {
+    } else if (isFuturistic) {
       scene.background.setHex(0x030712);
       scene.fog.color.setHex(0x030712);
       terrainMat.color.setHex(0x071024);
       wireMat.color.set(faders.primaryColor || '#67e8f9');
-      wireMat.opacity = 0.24;
+      wireMat.opacity = era === 'futuristic-low' ? 0.18 : 0.24;
     } else if (look === 'flir-ironbow') {
       scene.background.setHex(0x12091c);
       scene.fog.color.setHex(0x12091c);
       terrainMat.color.setHex(0x2a133d);
       wireMat.color.setHex(0x9333ea);
-      wireMat.opacity = 0.32;
+      wireMat.opacity = era === 'default-thin' ? 0.22 : 0.32;
     } else if (look === 'crt-inset') {
       scene.background.setHex(0x031208);
       scene.fog.color.setHex(0x031208);
       terrainMat.color.setHex(0x072612);
       wireMat.color.setHex(0x22c55e);
-      wireMat.opacity = 0.42;
+      wireMat.opacity = era === 'default-thin' ? 0.28 : 0.42;
     } else if (look === 'amber-soviet') {
       scene.background.setHex(0x140d02);
       scene.fog.color.setHex(0x140d02);
       terrainMat.color.setHex(0x291a05);
       wireMat.color.setHex(0xd97706);
-      wireMat.opacity = 0.38;
+      wireMat.opacity = era === 'default-thin' ? 0.25 : 0.38;
     } else {
       scene.background.setHex(0x060c16);
       scene.fog.color.setHex(0x060c16);
       terrainMat.color.setHex(0x0f1e32);
       wireMat.color.setHex(0x1d4ed8);
-      wireMat.opacity = 0.32;
+      wireMat.opacity = era === 'default-thin' ? 0.22 : 0.32;
     }
 
     scene.fog.density = 0.00015 + (faders.fogDensity ?? 0.25) * 0.00095;
@@ -298,9 +299,9 @@ export function createPresentation(container) {
         mesh.userData.bodyMat.color.set(faders.primaryColor || '#33ff66');
         mesh.userData.bodyMat.emissive.setHex(0x14532d);
         mesh.userData.plumeMat.color.set(faders.lockedColor || '#ffcc00');
-      } else if (era === 'futuristic') {
+      } else if (isFuturistic) {
         mesh.userData.bodyMat.color.setHex(0xe0f2fe);
-        mesh.userData.bodyMat.emissive.setHex(0x0284c7);
+        mesh.userData.bodyMat.emissive.setHex(era === 'futuristic-low' ? 0x075985 : 0x0284c7);
         mesh.userData.plumeMat.color.setHex(0xc084fc);
       } else if (look === 'flir-ironbow') {
         mesh.userData.bodyMat.color.setHex(0xfbbf24);
@@ -499,6 +500,8 @@ export function createPresentation(container) {
     const cx = w * 0.5;
     const cy = h * 0.5;
     const era = faders.eraMode || 'default';
+    const isFuturistic = era === 'futuristic' || era === 'futuristic-low';
+    const isThin = era === 'default-thin' || isFuturistic;
     const scale = faders.reticleScale ?? 1.0;
     const strokeW = faders.strokeWidth ?? 1.75;
     const primary = faders.primaryColor || '#38bdf8';
@@ -515,7 +518,7 @@ export function createPresentation(container) {
     ctx.font =
       era === 'retro-80s'
         ? '700 12px "Courier New", "JetBrains Mono", monospace'
-        : era === 'futuristic'
+        : isThin
         ? '400 10px "JetBrains Mono", "SF Mono", monospace'
         : '600 11px "JetBrains Mono", "SF Mono", monospace';
     ctx.textBaseline = 'middle';
@@ -539,7 +542,7 @@ export function createPresentation(container) {
     // ERA LAYER 2: FUTURISTIC HI-TECH PARTICLES, MICRO-RINGS & NEURAL FILAMENTS
     // -------------------------------------------------------------------------
     const particleDensity = faders.particleDensity ?? 0;
-    if (era === 'futuristic' || particleDensity > 0.05) {
+    if (isFuturistic || particleDensity > 0.05) {
       drawFuturisticHiTechLayer(
         ctx,
         w,
@@ -559,7 +562,9 @@ export function createPresentation(container) {
     // Standard Bloom shadow glow
     if ((faders.bloomStrength ?? 0.25) > 0.05) {
       ctx.shadowColor = activeColor;
-      ctx.shadowBlur = (faders.bloomStrength ?? 0.25) * (era === 'futuristic' ? 22 : 16);
+      ctx.shadowBlur =
+        (faders.bloomStrength ?? 0.25) *
+        (era === 'futuristic' ? 22 : era === 'futuristic-low' ? 6 : 16);
     }
 
     // -------------------------------------------------------------------------
@@ -583,14 +588,14 @@ export function createPresentation(container) {
         ctx.strokeStyle =
           era === 'retro-80s'
             ? 'rgba(51, 255, 102, 0.55)'
-            : era === 'futuristic'
+            : isFuturistic
             ? 'rgba(103, 232, 249, 0.55)'
             : 'rgba(148, 163, 184, 0.65)';
       }
 
       const r = isCandidate ? 16 * scale : 10 * scale;
 
-      if (era === 'futuristic') {
+      if (isFuturistic) {
         // Ultra-thin circular micro-target node + outer halo ring
         ctx.lineWidth = Math.max(0.55, strokeW * 0.85);
         ctx.beginPath();
@@ -623,7 +628,7 @@ export function createPresentation(container) {
             ? `±${sensor.irstRangeUncertaintyM}M`
             : `${(c.distance / 1000).toFixed(1)}KM`;
 
-        if (era === 'futuristic') {
+        if (isFuturistic) {
           // Delicate angled leader line + hex telemetry micro-label
           ctx.beginPath();
           ctx.moveTo(x + r * 0.8, y - r * 0.8);
@@ -637,7 +642,9 @@ export function createPresentation(container) {
           ctx.font = '700 11px "Courier New", monospace';
           ctx.fillText(`[${c.callsign}:${distStr}]`, x + r + 6, y - 4);
         } else {
-          ctx.font = '500 10px "JetBrains Mono", monospace';
+          ctx.font = isThin
+            ? '400 10px "JetBrains Mono", monospace'
+            : '500 10px "JetBrains Mono", monospace';
           ctx.fillText(`${c.callsign} ${distStr}`, x + r + 6, y - 4);
         }
 
@@ -788,7 +795,15 @@ export function createPresentation(container) {
     hudEls.name.textContent = specimen?.shortName || specimen?.name || 'HUD';
     if (hudEls.eraChip) {
       hudEls.eraChip.textContent =
-        era === 'retro-80s' ? "80'S CRT" : era === 'futuristic' ? 'HI-TECH' : 'DEFAULT';
+        era === 'retro-80s'
+          ? "80'S CRT"
+          : era === 'futuristic'
+          ? 'HI-TECH'
+          : era === 'default-thin'
+          ? 'DEF THIN'
+          : era === 'futuristic-low'
+          ? 'FUT LOW'
+          : 'DEFAULT';
       hudEls.eraChip.dataset.era = era;
     }
     hudEls.statusPill.dataset.state = status.state;
@@ -937,7 +952,7 @@ function drawRetro80sCrtLayer(ctx, w, h, cx, cy, boxR, frame, primary, locked, w
 }
 
 /**
- * 3) Futuristic Extreme Hi-Tech Layer (`futuristic`):
+ * 3) & 5) Futuristic Hi-Tech Layer (`futuristic` & `futuristic-low`):
  * Razor-thin micro-geometry, orbiting particle field, convergence energy particles streaming into lock,
  * and delicate neural-link spline filaments.
  */
@@ -955,10 +970,11 @@ function drawFuturisticHiTechLayer(
   warning,
   particleDensity
 ) {
-  const { world, sensor } = frame;
+  const { world, sensor, faders } = frame;
   const t = world.time;
   const isLocked = sensor.phase === 'LOCK';
   const accent = isLocked ? locked : primary;
+  const haloScale = Math.min(1, (faders.haloIntensity ?? 0.85) / 0.85);
 
   ctx.save();
 
@@ -1044,9 +1060,9 @@ function drawFuturisticHiTechLayer(
     ctx.arc(px, py, p.size, 0, Math.PI * 2);
     ctx.fill();
 
-    // Soft mini-halo around larger hi-tech motes
-    if (p.size > 2.1) {
-      ctx.fillStyle = hexToRgba(pColor, alpha * 0.22);
+    // Soft mini-halo around larger hi-tech motes (scaled down in futuristic-low)
+    if (p.size > 2.1 && haloScale > 0.2) {
+      ctx.fillStyle = hexToRgba(pColor, alpha * 0.22 * haloScale);
       ctx.beginPath();
       ctx.arc(px, py, p.size * 3.2, 0, Math.PI * 2);
       ctx.fill();
@@ -1444,7 +1460,7 @@ function drawRadarSemiActiveHud(ctx, cx, cy, boxR, scale, frame, primary, locked
 
     if (nag) {
       ctx.strokeStyle = warning;
-      ctx.lineWidth = 3;
+      ctx.lineWidth = (faders.strokeWidth ?? 1.75) * 1.4;
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.lineTo(sensor.candidate.proj.screenX, sensor.candidate.proj.screenY);
@@ -1701,6 +1717,7 @@ function drawCcipCcrpHud(ctx, cx, cy, boxR, scale, w, h, frame, primary, locked,
   const { sensor, faders } = frame;
   const isCcrp = (faders.deliveryModeCcrp ?? 0) >= 0.5;
   const windCant = (faders.windDriftKnots ?? 6) * 1.4;
+  const strokeW = faders.strokeWidth ?? 1.75;
 
   ctx.save();
   const fpmX = cx;
@@ -1733,7 +1750,7 @@ function drawCcipCcrpHud(ctx, cx, cy, boxR, scale, w, h, frame, primary, locked,
   if (isCcrp) {
     const cueY = fpmY + (1 - sensor.lockMeter) * 90;
     ctx.strokeStyle = locked;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = strokeW * 1.4;
     ctx.beginPath();
     ctx.moveTo(fpmX - 24, cueY);
     ctx.lineTo(fpmX + 24, cueY);
@@ -1742,7 +1759,7 @@ function drawCcipCcrpHud(ctx, cx, cy, boxR, scale, w, h, frame, primary, locked,
 
   if (sensor.candidate && sensor.candidate.distance < (faders.fragSafeAltM ?? 550)) {
     ctx.strokeStyle = warning;
-    ctx.lineWidth = 3.5;
+    ctx.lineWidth = strokeW * 1.6;
     ctx.beginPath();
     ctx.moveTo(cx - 65, cy - 65);
     ctx.lineTo(cx + 65, cy + 65);
@@ -1871,12 +1888,13 @@ function drawVtolVrHud(ctx, cx, cy, boxR, scale, w, h, frame, primary, locked, w
 // ============================================================================
 
 function drawLossAndGraceStudy(ctx, cx, cy, boxR, frame, warning, reducedMotion) {
-  const { sensor } = frame;
+  const { sensor, faders } = frame;
+  const strokeW = faders.strokeWidth ?? 1.75;
   if (sensor.phase === 'SIGHT_GRACE') {
     const pct = sensor.graceRemainingSec / Math.max(0.1, sensor.maxGraceSec);
     ctx.save();
     ctx.strokeStyle = '#fbbf24';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = strokeW * 1.4;
     ctx.beginPath();
     ctx.arc(cx, cy, boxR + 10, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
     ctx.stroke();
@@ -1960,6 +1978,7 @@ function drawShootCueLadder(ctx, cx, cy, boxR, frame, primary, locked, warning) 
 
 function drawInsetBezelAndContent(ctx, rect, frame, primary, locked, warning) {
   const { specimen, sensor, faders } = frame;
+  const strokeW = faders.strokeWidth ?? 1.75;
 
   if (specimen.insetMode === 'b-scope') {
     drawBScopePanel(ctx, rect, frame, primary, locked, warning);
@@ -1976,12 +1995,12 @@ function drawInsetBezelAndContent(ctx, rect, frame, primary, locked, warning) {
 
   ctx.save();
   ctx.strokeStyle = sensor.phase === 'LOCK' ? locked : primary;
-  ctx.lineWidth = faders.eraMode === 'futuristic' ? 0.85 : 2;
+  ctx.lineWidth = Math.max(0.65, strokeW * 1.1);
   ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
 
   const icx = rect.x + rect.w * 0.5;
   const icy = rect.y + rect.h * 0.5;
-  ctx.lineWidth = faders.eraMode === 'futuristic' ? 0.65 : 1;
+  ctx.lineWidth = Math.max(0.55, strokeW * 0.75);
   ctx.beginPath();
   ctx.moveTo(icx - 24, icy);
   ctx.lineTo(icx + 24, icy);

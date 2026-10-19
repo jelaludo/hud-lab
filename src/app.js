@@ -665,6 +665,10 @@ export function initHudLabApp() {
       setEraMode('retro-80s');
     } else if (e.key === '3') {
       setEraMode('futuristic');
+    } else if (e.key === '4') {
+      setEraMode('default-thin');
+    } else if (e.key === '5') {
+      setEraMode('futuristic-low');
     }
   });
 

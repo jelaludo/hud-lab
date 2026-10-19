@@ -139,6 +139,18 @@ body {
   box-shadow: 0 0 12px rgba(167, 139, 250, 0.35);
 }
 
+.era-btn.active[data-set-era="default-thin"] {
+  background: rgba(226, 232, 240, 0.14);
+  border-color: #94a3b8;
+  color: #f8fafc;
+}
+
+.era-btn.active[data-set-era="futuristic-low"] {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: #38bdf8;
+  color: #bae6fd;
+}
+
 .lab-header-right {
   display: flex;
   align-items: center;
@@ -480,6 +492,10 @@ body {
   filter: drop-shadow(0 0 6px rgba(103, 232, 249, 0.35));
 }
 
+.hud-viewport-root[data-era-mode="futuristic-low"] .hud-fx-overlay {
+  box-shadow: inset 0 0 28px rgba(56, 189, 248, 0.04);
+}
+
 .hud-top-bar {
   display: flex;
   align-items: center;
@@ -530,6 +546,18 @@ body {
   background: rgba(167, 139, 250, 0.2);
   color: #e0f2fe;
   border-color: #a78bfa;
+}
+
+.hud-era-chip[data-era="default-thin"] {
+  background: rgba(226, 232, 240, 0.12);
+  color: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.hud-era-chip[data-era="futuristic-low"] {
+  background: rgba(56, 189, 248, 0.15);
+  color: #bae6fd;
+  border-color: #38bdf8;
 }
 
 .hud-status-pill {

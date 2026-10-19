@@ -7,17 +7,20 @@
 import { getSpecimen } from './catalogue.js';
 
 /**
- * The 3 Master Visual Era Modes available across all 19 specimens:
+ * The 5 Master Visual Era Modes available across all 19 specimens:
  * 1) `default`: Default Tactical (Now)
  * 2) `retro-80s`: Old 1980s CRT Vector / Raster Oscilloscope Look
  * 3) `futuristic`: Advanced Futuristic Extreme Hi-Tech (ultra-thin lines, particles, soft halos)
+ * 4) `default-thin`: Default Thin (same palette/look as Default, but razor-thin 0.75px strokes & hairline typography)
+ * 5) `futuristic-low`: Futuristic Low Blow / Low Bloom (extreme hi-tech micro-geometry & particles with minimal bloom/glow)
  */
 export const ERA_MODES = {
   'default': {
     id: 'default',
     name: '1) Default (Tactical Now)',
-    shortLabel: '1) Default (Now)',
+    shortLabel: '1) Default',
     description: 'Baseline modern tactical HUD with balanced vector strokes and clean glass.',
+    preserveSpecimenPalette: true,
     overrides: {
       strokeWidth: 1.75,
       reticleScale: 1.0,
@@ -37,6 +40,7 @@ export const ERA_MODES = {
     name: "2) 80's CRT Oscilloscope",
     shortLabel: "2) 80's CRT",
     description: '1980s cathode-ray vector arcade & early cockpit CRT: phosphor persistence trails, thick stepped lines, scanline raster, curved tube bezel, and chromatic fringe.',
+    preserveSpecimenPalette: false,
     overrides: {
       look: 'crt-inset',
       primaryColor: '#33ff66',
@@ -59,8 +63,9 @@ export const ERA_MODES = {
   'futuristic': {
     id: 'futuristic',
     name: '3) Futuristic Extreme Hi-Tech',
-    shortLabel: '3) Futuristic Hi-Tech',
+    shortLabel: '3) Futuristic',
     description: 'Next-gen neural visor: razor-thin 0.8px micro-geometry, soft multi-layered optical halos, convergence particle streams, and volumetric spatial dust.',
+    preserveSpecimenPalette: false,
     overrides: {
       look: 'glass-bloom',
       primaryColor: '#67e8f9',
@@ -77,6 +82,51 @@ export const ERA_MODES = {
       scanlineIntensity: 0.02,
       noiseGrain: 0.0,
       vignette: 0.18,
+      terrainWireframe: true
+    }
+  },
+  'default-thin': {
+    id: 'default-thin',
+    name: '4) Default Thin (Hairline)',
+    shortLabel: '4) Default Thin',
+    description: 'Identical palette and optical rules as Default (Now), but with surgical 0.7px hairline vector strokes, thinner brackets, and lighter typography.',
+    preserveSpecimenPalette: true,
+    overrides: {
+      strokeWidth: 0.7,
+      reticleScale: 0.96,
+      reticleOpacity: 0.9,
+      bloomStrength: 0.1,
+      haloIntensity: 0.06,
+      particleDensity: 0.0,
+      phosphorPersistence: 0.0,
+      crtCurvature: 0.0,
+      scanlineIntensity: 0.05,
+      noiseGrain: 0.02,
+      vignette: 0.2
+    }
+  },
+  'futuristic-low': {
+    id: 'futuristic-low',
+    name: '5) Futuristic Low Blow (Low Glow)',
+    shortLabel: '5) Futuristic Low Blow',
+    description: 'Extreme hi-tech micro-geometry, vernier hair-rings, neural filaments, and convergence particles, but with restrained low bloom/halo for maximum crispness.',
+    preserveSpecimenPalette: false,
+    overrides: {
+      look: 'raw',
+      primaryColor: '#38bdf8',
+      lockedColor: '#c084fc',
+      warningColor: '#fb7185',
+      strokeWidth: 0.65,
+      reticleScale: 1.02,
+      reticleOpacity: 0.92,
+      bloomStrength: 0.08,
+      haloIntensity: 0.12,
+      particleDensity: 0.8,
+      phosphorPersistence: 0.0,
+      crtCurvature: 0.0,
+      scanlineIntensity: 0.0,
+      noiseGrain: 0.0,
+      vignette: 0.14,
       terrainWireframe: true
     }
   }
@@ -210,7 +260,9 @@ export const FADER_GROUPS = [
         options: [
           { value: 'default', label: '1) Default (Tactical Now)' },
           { value: 'retro-80s', label: "2) Old 80's CRT Raster" },
-          { value: 'futuristic', label: '3) Futuristic Extreme Hi-Tech' }
+          { value: 'futuristic', label: '3) Futuristic Extreme Hi-Tech' },
+          { value: 'default-thin', label: '4) Default Thin (Hairline)' },
+          { value: 'futuristic-low', label: '5) Futuristic Low Blow (Low Glow)' }
         ],
         default: 'default'
       },
@@ -337,29 +389,31 @@ export function applyEraModeToFaders(faders, specimenId, eraMode) {
   const specDefaults = buildDefaultFaders(specimenId, 'default');
   faders.eraMode = eraMode;
 
-  if (eraMode === 'default') {
-    // Restore specimen's own baseline presentation defaults
-    const keysToRestore = [
-      'look',
-      'primaryColor',
-      'lockedColor',
-      'warningColor',
-      'strokeWidth',
-      'reticleScale',
-      'reticleOpacity',
-      'bloomStrength',
-      'haloIntensity',
-      'particleDensity',
-      'phosphorPersistence',
-      'crtCurvature',
-      'scanlineIntensity',
-      'noiseGrain',
-      'vignette'
-    ];
+  const keysToRestore = [
+    'look',
+    'primaryColor',
+    'lockedColor',
+    'warningColor',
+    'strokeWidth',
+    'reticleScale',
+    'reticleOpacity',
+    'bloomStrength',
+    'haloIntensity',
+    'particleDensity',
+    'phosphorPersistence',
+    'crtCurvature',
+    'scanlineIntensity',
+    'noiseGrain',
+    'vignette'
+  ];
+
+  if (eraMode === 'default' || ERA_MODES[eraMode]?.preserveSpecimenPalette) {
+    // Restore specimen's own baseline presentation defaults first
     for (const k of keysToRestore) {
       faders[k] = specDefaults[k];
     }
-  } else if (ERA_MODES[eraMode]) {
+  }
+  if (eraMode !== 'default' && ERA_MODES[eraMode]) {
     Object.assign(faders, ERA_MODES[eraMode].overrides);
   }
   return faders;
